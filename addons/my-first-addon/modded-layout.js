@@ -101,13 +101,12 @@ export function moddedShow(xmlList, Blockly){
       //[ Addon ] we can use any XML tags that are not already in use to represent different types of SVG data
       else if (tagName == 'FOLDER'){
 
-        let elt = createFolderSVG(Blockly, xml, this.workspace_);
-
+        let svg = createFolderSVG(Blockly, xml, this.workspace_);
+        let elt = svg.element;
         //make sure to mark which elements are SVGs created by the addon
         elt.classList.add("custom-svg-from-addon");
-        console.log(elt);
         this.workspace_.getCanvas().appendChild(elt);
-        contents.push({type: 'test', element: elt});
+        contents.push({type: 'folder', element: elt, height: svg.height});
         gaps.push(default_gap);
       }
     }
@@ -202,9 +201,9 @@ export function moddedLayout(contents, gaps, Blockly) {
       this.buttons_.push(button);
       cursorY += button.height + gaps[i];
     }
-    else if (item.type == 'test'){
+    else if (item.type == 'folder'){
       item.element.setAttribute("transform", `translate(${12}, ${cursorY})`);
-      cursorY += 100 + gaps[i];
+      cursorY += item.height + gaps[i];
 
 
     }
