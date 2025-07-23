@@ -1,43 +1,55 @@
+import { moddedLayout, moddedShow} from './modded-layout.js';
+
 export default async function ({ addon, console, msg, safeMsg }){
   const ScratchBlocks = await addon.tab.traps.getBlockly();
   const vm = addon.tab.traps.vm;
+  const ns = "http://www.w3.org/2000/svg";
 
 
   function myCustomBlocks(workspace){
-    var xmlList = [];
+    let xmlList = [];
 
     ScratchBlocks.Procedures.addCreateButton_(workspace, xmlList);
-    var button = document.createElement('button');
-    var msg = "A Custom Button";
-    var callbackKey = 'CUSTOM_BUTTON';
-    var callback = function() {
-      console.log("click");
-    };
-    button.setAttribute('text', msg);
-    button.setAttribute('callbackKey', callbackKey);
-    workspace.registerButtonCallback(callbackKey, callback);
+
+
+    let button = document.createElement('test');
+
+
+    button.setAttribute('text', "A Custom Element");
 
     xmlList.push(button);
+
+    let mutations = ScratchBlocks.Procedures.allProcedureMutations(workspace);
+    let names = mutations.map((m) => m.getAttribute('proccode'));
+    console.log(names);
+
     console.log(xmlList);
     return xmlList;
 
   }
 
+  function renderFolders(){
+    let canvas = document.querySelector(".ScratchBlocksFlyout .ScratchBlocksWorkspace .ScratchBlocksBlockCanvas");
+    let categoryLabels = canvas.getElementsByClassName("ScratchBlocksFlyoutLabel categoryLabel");
+    let myBlocks = categoryLabels[8];
+    let rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("width", )
+    console.log(categoryLabels);
+  }
 
-
-  const oldShow = ScratchBlocks.Flyout.prototype.show;
   ScratchBlocks.Flyout.prototype.show = function (xmlList) {
     let workspace;
     if (ScratchBlocks.registry)
       workspace = this.targetWorkspace; // new Blockly
     else workspace = this.workspace_;
-    console.log(ScratchBlocks.PROCEDURE_CATEGORY_NAME);
+
     workspace.registerToolboxCategoryCallback(ScratchBlocks.PROCEDURE_CATEGORY_NAME, myCustomBlocks);
-    return oldShow.call(this, xmlList);
+    moddedShow.call(this, xmlList, ScratchBlocks);
   };
 
-
-
+  ScratchBlocks.VerticalFlyout.prototype.layout_ = function(contents, gaps){
+    moddedLayout.call(this, contents, gaps, ScratchBlocks);
+  };
 
 
 }
