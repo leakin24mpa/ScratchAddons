@@ -1,0 +1,38 @@
+{
+  "name": "0e7spaceship's addon",
+  "description": "Learning to make a scratch addon",
+  "credits": [
+    {
+      "name": "0e7spaceship",
+      "link": "https://scratch.mit.edu/users/0e7spaceship"
+    }
+  ],
+  "userscripts": [
+    {
+      "url": "userscript.js",
+      "matches": ["projects"]
+    }
+  ],
+  "userstyles": [
+    {
+      "url": "style.css",
+      "matches": ["projects"]
+    }
+  ],
+  "settings": [
+    {
+      "name": "Setting",
+      "id": "idk",
+      "type": "boolean",
+      "default": false
+    }
+  ],
+  "tags": ["editor", "codeEditor"],
+  "versionAdded": "1.16.0",
+  "latestUpdate": {
+    "version": "1.33.0",
+    "temporaryNotice": "Graph animation is now disabled by default to increase performance. You can re-enable it if you want.",
+    "newSettings": ["fancy_graphs"]
+  },
+  "libraries": ["scratch-gui", "scratch-vm"]
+}
