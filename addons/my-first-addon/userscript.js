@@ -3,39 +3,41 @@ import { moddedLayout, moddedShow} from './modded-layout.js';
 export default async function ({ addon, console, msg, safeMsg }){
   const ScratchBlocks = await addon.tab.traps.getBlockly();
   const vm = addon.tab.traps.vm;
-  const ns = "http://www.w3.org/2000/svg";
+
 
 
   function myCustomBlocks(workspace){
     let xmlList = [];
 
-    ScratchBlocks.Procedures.addCreateButton_(workspace, xmlList);
 
 
-    let button = document.createElement('test');
+    for(let i = 0; i < 2; i++){
+      let folder = document.createElement('folder');
 
 
-    button.setAttribute('text', "A Custom Element");
+      folder.setAttribute('text', "A Custom Element");
+      folder.innerHTML = `<block type="motion_movesteps">
+            <value name="STEPS">
+                <shadow type="math_number">
+                    <field name="NUM">10</field>
+                </shadow>
+            </value>
+        </block>`;
+      xmlList.push(folder);
+    }
 
-    xmlList.push(button);
 
     let mutations = ScratchBlocks.Procedures.allProcedureMutations(workspace);
     let names = mutations.map((m) => m.getAttribute('proccode'));
     console.log(names);
 
+    ScratchBlocks.Procedures.addCreateButton_(workspace, xmlList);
     console.log(xmlList);
     return xmlList;
 
   }
 
-  function renderFolders(){
-    let canvas = document.querySelector(".ScratchBlocksFlyout .ScratchBlocksWorkspace .ScratchBlocksBlockCanvas");
-    let categoryLabels = canvas.getElementsByClassName("ScratchBlocksFlyoutLabel categoryLabel");
-    let myBlocks = categoryLabels[8];
-    let rect = document.createElementNS(ns, "rect");
-    rect.setAttribute("width", )
-    console.log(categoryLabels);
-  }
+
 
   ScratchBlocks.Flyout.prototype.show = function (xmlList) {
     let workspace;

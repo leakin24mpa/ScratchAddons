@@ -1,7 +1,22 @@
+
+
+
+//this is a copy of the function that ScratchBlocks uses to generate the SVG images for the
+// block palette panel (they call it the Flyout). The original function takes a list of blocks, buttons, and labels
+// in the form of an XML list and converts each element into an SVG image. This addon uses a modified version of the
+
+import { createFolderSVG } from "./folders.js";
+
+// original function that allows me to insert any SVG images I want into the block palette.
 export function moddedShow(xmlList, Blockly){
   this.workspace_.setResizesEnabled(false);
   this.hide();
   this.clearOldBlocks_();
+
+  //[ Addon ] We neet to clean up any of the SVGs the addon created the last time the block palette was shown.
+  let customContent = Array.from(this.workspace_.svgGroup_.getElementsByClassName("custom-svg-from-addon"));
+  console.log(customContent);
+  customContent.map((svg) => svg.remove());
 
   this.setVisible(true);
   // Create the blocks to be shown in this flyout.
@@ -83,8 +98,17 @@ export function moddedShow(xmlList, Blockly){
         contents.push({type: 'button', button: curButton});
         gaps.push(default_gap);
       }
-      else if (tagName == 'TEST'){
-        console.log("new XML Element found!");
+      //[ Addon ] we can use any XML tags that are not already in use to represent different types of SVG data
+      else if (tagName == 'FOLDER'){
+
+        let elt = createFolderSVG(Blockly, xml, this.workspace_);
+
+        //make sure to mark which elements are SVGs created by the addon
+        elt.classList.add("custom-svg-from-addon");
+        console.log(elt);
+        this.workspace_.getCanvas().appendChild(elt);
+        contents.push({type: 'test', element: elt});
+        gaps.push(default_gap);
       }
     }
   }
@@ -177,6 +201,12 @@ export function moddedLayout(contents, gaps, Blockly) {
 
       this.buttons_.push(button);
       cursorY += button.height + gaps[i];
+    }
+    else if (item.type == 'test'){
+      item.element.setAttribute("transform", `translate(${12}, ${cursorY})`);
+      cursorY += 100 + gaps[i];
+
+
     }
   }
 };
