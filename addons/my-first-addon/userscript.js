@@ -1,4 +1,4 @@
-import { createFolderXML } from './folders.js';
+import { createFolderXML, getCreateAllInputs } from './folders.js';
 import { moddedLayout, moddedShow} from './modded-layout.js';
 
 export default async function ({ addon, console, msg, safeMsg }){
@@ -10,6 +10,8 @@ export default async function ({ addon, console, msg, safeMsg }){
 
 
 
+  ScratchBlocks.Blocks.procedures_call.createAllInputs_ = getCreateAllInputs(ScratchBlocks);
+  ScratchBlocks.Blocks.procedures_prototype.createAllInputs_ = getCreateAllInputs(ScratchBlocks);
 
   ScratchBlocks.Flyout.prototype.show = function (xmlList) {
     let workspace;
