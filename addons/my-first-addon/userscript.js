@@ -1,12 +1,10 @@
+import { createPathString, getFolderPath, isInFolder } from './folderPathUtil.js';
 import { createFolderXML, getCreateAllInputs } from './folders.js';
 import { moddedLayout, moddedShow} from './modded-layout.js';
 
 export default async function ({ addon, console, msg, safeMsg }){
   const ScratchBlocks = await addon.tab.traps.getBlockly();
   const vm = addon.tab.traps.vm;
-
-
-
 
 
 
@@ -20,7 +18,8 @@ export default async function ({ addon, console, msg, safeMsg }){
     else workspace = this.workspace_;
 
     workspace.registerToolboxCategoryCallback(ScratchBlocks.PROCEDURE_CATEGORY_NAME, (workspace) => createFolderXML(ScratchBlocks, workspace));
-    moddedShow.call(this, xmlList, ScratchBlocks);
+    console.log(vm);
+    moddedShow.call(this, xmlList, ScratchBlocks, vm);
   };
 
   ScratchBlocks.VerticalFlyout.prototype.layout_ = function(contents, gaps){

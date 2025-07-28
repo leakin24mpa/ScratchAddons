@@ -8,7 +8,7 @@
 import { createFolderSVG } from "./folders.js";
 
 // original function that allows me to insert any SVG images I want into the block palette.
-export function moddedShow(xmlList, Blockly){
+export function moddedShow(xmlList, Blockly, vm){
   this.workspace_.setResizesEnabled(false);
   this.hide();
   this.clearOldBlocks_();
@@ -100,8 +100,7 @@ export function moddedShow(xmlList, Blockly){
       }
       //[ Addon ] we can use any XML tags that are not already in use to represent different types of SVG data
       else if (tagName == 'FOLDER'){
-
-        let svg = createFolderSVG(Blockly, xml, this.workspace_);
+        let svg = createFolderSVG(Blockly, xml, this.workspace_, vm);
         let elt = svg.element;
         //make sure to mark which elements are SVGs created by the addon
         elt.classList.add("custom-svg-from-addon");
