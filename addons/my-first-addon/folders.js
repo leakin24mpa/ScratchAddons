@@ -1,4 +1,4 @@
-import { createPathString, getFirstTextContent, getFolderPath, isInFolder, toggleHidden } from "./folderPathUtil.js";
+import { createPathString, getFirstTextContent, getFolderName, getFolderPath, isBlockInFolder, isCollapsed, isInAnyFolder, toggleCollapsed } from "./folder-path-util.js";
 
 const ns = "http://www.w3.org/2000/svg";
 const FOLDER_IMAGE_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj4KPHBhdGggc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9IiNmZmZmZmYiIGQ9Ik0gNTUgNDAgTCA2MCAzMCBMIDkwIDMwIEwgOTUgNDAgTCA5NSA5NSBMIDUgOTUgTCA1IDQwIFoiPjwvcGF0aD4KPC9zdmc+';
@@ -32,17 +32,38 @@ export function createFolderSVG(Blockly, XMLitem, workspace, vm){
 
   collapseButton.addEventListener("click", (e) => {
     collapseButton.classList.toggle("closed");
-    let newName = toggleHidden(thisPath);
+    let newName = toggleCollapsed(thisPath);
     console.log(`renaming ${thisPath} to ${newName}`)
 
-    renameFolder(Blockly, workspace, vm, thisPath,newName);
+    renameFolder(Blockly, workspace, vm, thisPath, newName);
+    let swap = thisPath;
+    thisPath = newName;
+    newName = swap;
+
+    workspace.refreshToolboxSelection_();
   })
-
-  hideButton.innerHTML = `<image x="0" y="0" width="20" height="20" xlink:href=${SHOWN_ICON_IMAGE_DATA}></image>`
-
+  let isHidden = false;
+  hideButton.innerHTML = `<image x="0" y="0" width="20" height="20" xlink:href=${isHidden? HIDDEN_ICON_IMAGE_DATA: SHOWN_ICON_IMAGE_DATA}></image>`
+  hideButton.addEventListener("click", (e) => {
+    isHidden = !isHidden;
+    hideButton.innerHTML = `<image x="0" y="0" width="20" height="20" xlink:href=${isHidden? HIDDEN_ICON_IMAGE_DATA: SHOWN_ICON_IMAGE_DATA}></image>`
+    let blocks = workspace.targetWorkspace.getAllBlocks().filter((b) =>
+      b.type == 'procedures_definition' && isBlockInFolder(b.childBlocks_[0].procCode_,thisPath)
+    );
+    blocks.map((b) => {
+      b.svgGroup_.setAttribute("visibility", isHidden? "hidden" : "visible");
+      b.movable_ = !isHidden
+      b.isShadow_ = isHidden
+    });
+    console.log(blocks);
+  });
   elt.append(collapseButton, hideButton);
+  console.log(XMLitem.getAttribute("is-collapsed"));
+  if(XMLitem.getAttribute("is-collapsed") == "true"){
+    collapseButton.classList.add("closed");
+    return { element: elt, height: 30};
+  }
 
-  console.log(collapseButton);
 
   let cursorY = 30;
   for(let i = 0; i < XMLitem.childNodes.length; i++){
@@ -55,7 +76,7 @@ export function createFolderSVG(Blockly, XMLitem, workspace, vm){
       height = 65;
     }
     else if(xml.tagName == 'FOLDER'){
-      let subFolder = createFolderSVG(Blockly, xml, workspace);
+      let subFolder = createFolderSVG(Blockly, xml, workspace, vm);
       createdSVG = subFolder.element;
       height = subFolder.height;
       cursorY += 10;
@@ -86,7 +107,7 @@ export function createFolderXML(Blockly, workspace){
     let name = m.getAttribute('proccode');
     let path;
     let displayName;
-    if(isInFolder(name)){
+    if(isInAnyFolder(name)){
       path = getFolderPath(name, true);
       displayName = path.pop();
     }
@@ -140,18 +161,19 @@ export function createFolderXML(Blockly, workspace){
     }
     for(var f in tree.folders){
       let subFolder = document.createElement('folder');
-      subFolder.setAttribute("folder-name", f);
+      subFolder.setAttribute("folder-name", getFolderName(f));
       subFolder.setAttribute("folder-path", pathName + "/" + f);
+      subFolder.setAttribute("is-collapsed", isCollapsed(f));
       subFolder.append(...folderTreeToXML(tree.folders[f], pathName + "/" + f));
       xmlList.push(subFolder);
     }
     return xmlList;
   }
 
-  console.log(folderTree);
+  Blockly.Procedures.addCreateButton_(workspace, xmlList);
   xmlList.push(...folderTreeToXML(folderTree, ""));
 
-  Blockly.Procedures.addCreateButton_(workspace, xmlList);
+
   return xmlList;
 
 }
@@ -168,7 +190,7 @@ return function(connectionMap) {
 
 
   //identify if this custom block is in a folder
-  if(isInFolder(this.procCode_)){
+  if(isInAnyFolder(this.procCode_)){
     //append the folder icon to the beginning of the block's SVG representation
     this.appendDummyInput("non-empty-name").appendField(new Blockly.FieldImage(FOLDER_IMAGE_DATA, 20, 20, false));
 
@@ -225,17 +247,12 @@ function renameFolder(Blockly, workspace, vm, pathToFolder, newName){
   let procedures = mutations.map((m) => m.getAttribute('proccode'));
 
 
-  let basePath = getFolderPath(pathToFolder, false);
-  basePath.pop();
-  basePath = createPathString(basePath);
-  console.log(basePath);
-
-  if(procedures.some((p) => p.startsWith(newName))){
+  if(procedures.some((p) => isBlockInFolder(p, newName))){
     //Folder already exists
-    alert(`A folder named "${newName}" already exists in ${basePath}`);
+    alert(`A folder named "${newName}" already exists`);
     return;
   }
-  let blocksToRename = procedures.filter((p) => p.startsWith(pathToFolder));
+  let blocksToRename = procedures.filter((p) =>isBlockInFolder(p, pathToFolder));
   console.log(blocksToRename);
 
   let newNames = blocksToRename.map((p) => newName + p.substring(pathToFolder.length));
@@ -247,7 +264,6 @@ function renameFolder(Blockly, workspace, vm, pathToFolder, newName){
   blocks.push(...flyoutBlocks);
 
 
-  console.log(blocks.filter((b) => b.procCode_.startsWith(newName)));
   for(let i = 0; i < blocks.length; i++){
     let indexToReplace = blocksToRename.indexOf(blocks[i].procCode_);
     if(indexToReplace >= 0){

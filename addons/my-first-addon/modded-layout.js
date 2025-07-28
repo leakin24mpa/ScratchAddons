@@ -14,7 +14,7 @@ export function moddedShow(xmlList, Blockly, vm){
   this.clearOldBlocks_();
 
   //[ Addon ] We neet to clean up any of the SVGs the addon created the last time the block palette was shown.
-  let customContent = Array.from(this.workspace_.svgGroup_.getElementsByClassName("custom-svg-from-addon"));
+  let customContent = Array.from(this.workspace_.svgGroup_.getElementsByClassName("sa-custom-folder-svg"));
   console.log(customContent);
   customContent.map((svg) => svg.remove());
 
@@ -103,7 +103,7 @@ export function moddedShow(xmlList, Blockly, vm){
         let svg = createFolderSVG(Blockly, xml, this.workspace_, vm);
         let elt = svg.element;
         //make sure to mark which elements are SVGs created by the addon
-        elt.classList.add("custom-svg-from-addon");
+        elt.classList.add("sa-custom-folder-svg");
         this.workspace_.getCanvas().appendChild(elt);
         contents.push({type: 'folder', element: elt, height: svg.height});
         gaps.push(default_gap);

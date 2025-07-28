@@ -1,11 +1,11 @@
-export function isInFolder(proccode){
+export function isInAnyFolder(proccode){
   //blocks in folders must begin with a /, and have at least one folder name between slashes
   return /^\/[^\/%]+\//.test(proccode);
 }
 
 //get the folder path for a block as a list of folder names (ex. "/folder/other folder/block" => ["folder", "other folder", "block"])
 export function getFolderPath(proccode, fullPath){
-  if(!isInFolder(proccode) && fullPath){
+  if(!isInAnyFolder(proccode) && fullPath){
     return [proccode];
   }
   let slices = proccode.split("/");
@@ -33,14 +33,35 @@ export function getFirstTextContent(proccode){
 export function createPathString(pathList){
   return pathList.reduce((a,b) => a + "/" + b, "");
 }
-export function toggleHidden(proccode){
+export function isCollapsed(folderText){
+  return folderText.endsWith('*');
+}
+export function getFolderName(folderText){
+  return isCollapsed(folderText) ? folderText.substring(0, folderText.length - 1) : folderText;
+}
+
+export function isBlockInFolder(proccode, folderPathString){
+  if(!isInAnyFolder(proccode)){
+    return false;
+  }
+  let blockPath = getFolderPath(proccode, true);
+  let folderPath = getFolderPath(folderPathString, false);
+  for(let i = 0; i < folderPath.length; i++){
+    if(!(blockPath[i] === folderPath[i])){
+      return false;
+    }
+  }
+  return true;
+}
+
+export function toggleCollapsed(proccode){
   let pathList = getFolderPath(proccode, false);
   let name = pathList.pop();
-  if(name[0] == "*"){
-    name = name.substring(1);
+  if(isCollapsed(name)){
+    name = name.substring(0, name.length - 1)
   }
   else{
-    name = "*" + name;
+    name = name + "*";
   }
   pathList.push(name);
   return createPathString(pathList);

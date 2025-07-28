@@ -1,4 +1,4 @@
-import { createPathString, getFolderPath, isInFolder } from './folderPathUtil.js';
+import { createPathString, getFolderPath, isBlockInFolder, isInAnyFolder } from './folder-path-util.js';
 import { createFolderXML, getCreateAllInputs } from './folders.js';
 import { moddedLayout, moddedShow} from './modded-layout.js';
 
