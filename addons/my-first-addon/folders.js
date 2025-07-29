@@ -176,6 +176,19 @@ export function createFolderXML(Blockly, workspace){
 
 }
 
+function createPopupDiv(pathList, x, y){
+  const div = document.createElement("div");
+  let html = "";
+  pathList.forEach(element => {
+    html += `<span class="sa-folder-separator">▸</span><span>${getFolderName(element)}</span>`
+  });
+  div.innerHTML = html;
+  div.style.position = "absolute";
+  div.style.top = y + "px";
+  div.style.left = x + "px";
+  div.classList.add("sa-custom-block-folder-popup");
+  return div;
+}
 //the createAllInputs function creates the custom block's SVG representation from its text string content (proccode)
 //this addon uses a modded version of this function to add the folder icon to the beginning of custom blocks that are inside folders
 export function getCreateAllInputs(Blockly){
@@ -189,9 +202,19 @@ return function(connectionMap) {
 
   //identify if this custom block is in a folder
   if(isInAnyFolder(this.procCode_)){
-    //append the folder icon to the beginning of the block's SVG representation
-    this.appendDummyInput("non-empty-name").appendField(new Blockly.FieldImage(FOLDER_IMAGE_DATA, 20, 20, false));
+    let field = new Blockly.FieldImage(FOLDER_IMAGE_DATA, 20, 20, false);
 
+    //append the folder icon to the beginning of the block's SVG representation
+    this.appendDummyInput("non-empty-name").appendField(field);
+    field.init();
+    let div;
+    field.fieldGroup_.addEventListener("mouseenter", (e) => {
+      div = createPopupDiv(getFolderPath(this.procCode_, true), e.clientX, e.clientY);
+      document.body.appendChild(div);
+    });
+    field.fieldGroup_.addEventListener("mouseleave", (e) => {
+      div.remove();
+    })
     //remove the filepath section of the block's name (ex. "/my folder/other folder/block" => "block")
     let shortenedText = getFirstTextContent(this.procCode_);
     if(shortenedText[0] == '%'){

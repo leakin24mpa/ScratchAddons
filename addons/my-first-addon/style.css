@@ -5,3 +5,26 @@
 .sa-folder-dropdown.sa-folder-closed{
   transform: rotate(0deg);
 }
+
+.sa-custom-block-folder-popup{
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.502);
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.sa-custom-block-folder-popup span{
+  font-size: 8pt;
+  font-weight: bold;
+  padding: 2px;
+  background-color: rgb(115, 115, 115);
+  color: white;
+}
+.sa-custom-block-folder-popup span.sa-folder-separator{
+  background-color: transparent;
+  color:rgb(115, 115, 115);
+}
+
+.sa-custom-block-folder-popup span:last-child{
+  background-color: rgb(244, 80, 145);
+}
