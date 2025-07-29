@@ -1,12 +1,9 @@
-
+import { createFolderSVG } from "./folders.js";
 
 
 //this is a copy of the function that ScratchBlocks uses to generate the SVG images for the
 // block palette panel (they call it the Flyout). The original function takes a list of blocks, buttons, and labels
 // in the form of an XML list and converts each element into an SVG image. This addon uses a modified version of the
-
-import { createFolderSVG } from "./folders.js";
-
 // original function that allows me to insert any SVG images I want into the block palette.
 export function moddedShow(xmlList, Blockly, vm){
   this.workspace_.setResizesEnabled(false);
@@ -100,7 +97,7 @@ export function moddedShow(xmlList, Blockly, vm){
       }
       //[ Addon ] we can use any XML tags that are not already in use to represent different types of SVG data
       else if (tagName == 'FOLDER'){
-        let svg = createFolderSVG(Blockly, xml, this.workspace_, vm);
+        let svg = createFolderSVG(Blockly, xml, this.workspace_, vm, () => "");
         let elt = svg.element;
         //make sure to mark which elements are SVGs created by the addon
         elt.classList.add("sa-custom-folder-svg");

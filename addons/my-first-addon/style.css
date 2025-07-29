@@ -1,7 +1,7 @@
-.folder-dropdown path{
-  transform-origin: 10px 10px;
+.sa-folder-dropdown{
+  transform-origin: 15px 12px;
   transform: rotate(90deg);
 }
-.folder-dropdown.closed path{
+.sa-folder-dropdown.sa-folder-closed{
   transform: rotate(0deg);
 }
