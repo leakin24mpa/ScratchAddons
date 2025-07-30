@@ -1,7 +1,6 @@
 import { getFirstTextContent, getFolderName, getFolderPath, isCollapsed, isHidden, isInAnyFolder} from "./folder-path-util.js";
 
 
-const ns = "http://www.w3.org/2000/svg";
 const FOLDER_IMAGE_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj4KPHBhdGggc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9IiNmZmZmZmYiIGQ9Ik0gNTUgNDAgTCA2MCAzMCBMIDkwIDMwIEwgOTUgNDAgTCA5NSA5NSBMIDUgOTUgTCA1IDQwIFoiPjwvcGF0aD4KPC9zdmc+';
 
 
@@ -14,25 +13,18 @@ export function createFolderXML(Blockly, workspace){
   let names = mutations.map((m) => {
     let name = m.getAttribute('proccode');
     let path;
-    let displayName;
     if(isInAnyFolder(name)){
       path = getFolderPath(name, true);
-      displayName = path.pop();
+      path.pop();
     }
     else{
       path = [];
-      displayName = name;
     }
-
-
     return {
-      name: displayName,
       mutation: m,
       //grab folder names from block definition
       path: path
     }});
-
-  console.log(names);
   let folderTree = {
     blocks: [],
     folders: {}
@@ -50,7 +42,7 @@ export function createFolderXML(Blockly, workspace){
       addBlockToFolderTree(tree.folders[subFolder], block);
     }
     else{
-      tree.blocks.push({name: block.name, mutation: block.mutation});
+      tree.blocks.push(block.mutation);
     }
   }
   names.map((block) => {
@@ -62,9 +54,9 @@ export function createFolderXML(Blockly, workspace){
     for(let i = 0; i < tree.blocks.length; i++){
       let block = document.createElement('block');
       block.setAttribute('type', 'procedures_call');
-      block.setAttribute("name", tree.blocks[i].name);
+      block.setAttribute("name", tree.blocks[i].getAttribute("proccode"));
       block.setAttribute('gap', 16);
-      block.appendChild(tree.blocks[i].mutation);
+      block.appendChild(tree.blocks[i]);
       xmlList.push(block);
     }
     for(var f in tree.folders){
@@ -85,7 +77,7 @@ export function createFolderXML(Blockly, workspace){
   const parentItem = document.createElement("sa-my-blocks");
   parentItem.append(...xmlList);
   const output = [];
-  const buttonXML = Blockly.Procedures.addCreateButton_(workspace, output);
+  Blockly.Procedures.addCreateButton_(workspace, output);
   output.push(parentItem);
   return output;
 }

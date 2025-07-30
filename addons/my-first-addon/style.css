@@ -35,3 +35,31 @@
   border: 1px solid rgb(255, 51, 85);
   font-weight: 500;
 }
+
+.sa-folder-bg{
+  rx: 4;
+  fill: transparent;
+  transition: fill 0.1s ease-in-out;
+}
+.sa-folder-bg.sa-folder-drag-target{
+  fill:rgba(180, 88, 211, 0.437);
+
+}
+
+.sa-folder-draggable{
+  pointer-events: none;
+}
+
+.sa-folder-block-move{
+  fill: transparent;
+  transition: fill 0.1s ease-in-out;
+  cursor: ns-resize;
+}
+.sa-folder-block-move:hover{
+  fill: rgba(255, 102, 128, 0.328)
+}
+
+.sa-folder-dragging .sa-folder-block-move{
+  pointer-events: none;
+  cursor: pointer;
+}
