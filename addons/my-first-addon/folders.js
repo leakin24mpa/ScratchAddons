@@ -1,98 +1,9 @@
-import { getFirstTextContent, getFolderName, getFolderPath, isBlockHidden, isBlockInFolder, isCollapsed, isHidden, isInAnyFolder, isModified, setCollapsed, setHidden } from "./folder-path-util.js";
-import { createTreeViewSVG } from "./tree-view-svg.js";
+import { getFirstTextContent, getFolderName, getFolderPath, isCollapsed, isHidden, isInAnyFolder} from "./folder-path-util.js";
+
 
 const ns = "http://www.w3.org/2000/svg";
 const FOLDER_IMAGE_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj4KPHBhdGggc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9IiNmZmZmZmYiIGQ9Ik0gNTUgNDAgTCA2MCAzMCBMIDkwIDMwIEwgOTUgNDAgTCA5NSA5NSBMIDUgOTUgTCA1IDQwIFoiPjwvcGF0aD4KPC9zdmc+';
 
-export function createFolderSVG(Blockly, XMLitem, workspace, vm, getParentPath){
-  const elt = document.createElementNS(ns, "g");
-
-  const folderName = XMLitem.getAttribute("folder-name");
-  const hidden = XMLitem.getAttribute("is-hidden") == "true";
-  const collapsed = XMLitem.getAttribute("is-collapsed") == "true";
-
-  let thisPath = XMLitem.getAttribute("folder-path");
-  const getPath = () => getParentPath() + "/" + thisPath;
-
-  const collapseCallback = (value) => {
-    const newName = setCollapsed(thisPath, value);
-
-    let ogPath = getPath();
-    let newPath = getParentPath() + "/" + newName;
-    renameFolder(Blockly, workspace, vm, ogPath, newPath);
-    thisPath = newName;
-    workspace.refreshToolboxSelection_();
-  }
-  const hideCallback = (value, forceUpdate) => {
-    if(!forceUpdate && value == isHidden(thisPath)){
-      return;
-    }
-    const newName = setHidden(thisPath, value);
-    let ogPath = getPath();
-    let newPath = getParentPath() + "/" + newName;
-    renameFolder(Blockly, workspace, vm, ogPath, newPath);
-    thisPath = newName;
-
-    //check if block was already hidden by a parent folder
-    if(isBlockHidden(newPath)){
-      return;
-    }
-
-    let blocks = workspace.targetWorkspace.getAllBlocks().filter((b) =>
-      b.type == 'procedures_definition' && isBlockInFolder(b.childBlocks_[0].procCode_,thisPath)
-    );
-    blocks.map((b) => {
-      const blockShouldHide = isBlockHidden(b.childBlocks_[0].procCode_);
-      b.svgGroup_.setAttribute("visibility", blockShouldHide? "hidden" : "visible");
-      setScriptMovability(b, !blockShouldHide);
-    });
-  }
-  const renameCallback = (text) => {
-    let ogPath = getPath();
-    let newPath = getParentPath() + "/" + text + (isModified(thisPath) ? thisPath.at(-1) : "");
-    renameFolder(Blockly, workspace, vm, ogPath, newPath);
-    thisPath = newPath;
-  }
-
-
-
-  elt.append(createTreeViewSVG(Blockly, workspace, folderName, collapsed, hidden, collapseCallback, hideCallback, renameCallback));
-  if(collapsed){
-    return { element: elt, height: 40};
-  }
-
-
-  let cursorY = 50;
-  for(let i = 0; i < XMLitem.childNodes.length; i++){
-    let xml = XMLitem.childNodes[i];
-    let createdSVG;
-    let height;
-    if(xml.tagName == 'BLOCK'){
-      let blockSVG = Blockly.Xml.domToBlock(xml, workspace);
-      createdSVG = blockSVG.svgGroup_;
-      height = 65;
-    }
-    else if(xml.tagName == 'FOLDER'){
-      let subFolder = createFolderSVG(Blockly, xml, workspace, vm, getPath);
-      createdSVG = subFolder.element;
-      height = subFolder.height;
-      cursorY += 20;
-    }
-
-    createdSVG.setAttribute("transform", `translate(20, ${cursorY})`);
-    elt.appendChild(createdSVG);
-    cursorY += height;
-  }
-  let line = document.createElementNS(ns, "line");
-  line.setAttribute("x1", 4);
-  line.setAttribute("y1", 40);
-  line.setAttribute("x2", 4);
-  line.setAttribute("y2", cursorY);
-  line.setAttribute("stroke-width", 1);
-  line.setAttribute("stroke", "#adadadff");
-  elt.appendChild(line);
-  return { element: elt, height: cursorY};
-}
 
 export function createFolderXML(Blockly, workspace){
   let xmlList = [];
@@ -168,12 +79,15 @@ export function createFolderXML(Blockly, workspace){
     return xmlList;
   }
 
-  Blockly.Procedures.addCreateButton_(workspace, xmlList);
+
   xmlList.push(...folderTreeToXML(folderTree, ""));
 
-
-  return xmlList;
-
+  const parentItem = document.createElement("sa-my-blocks");
+  parentItem.append(...xmlList);
+  const output = [];
+  const buttonXML = Blockly.Procedures.addCreateButton_(workspace, output);
+  output.push(parentItem);
+  return output;
 }
 
 function createPopupDiv(pathList, x, y){
@@ -253,55 +167,3 @@ return function(connectionMap) {
   }
 };
 };
-
-
-//Since Scratch can't store the folder strucure in the sb3 file, we have to store all the folder information in the names of the custom blocks themselves
-//so renaming a folder just consists of renaming every custom block inside that folder
-function renameFolder(Blockly, workspace, vm, pathToFolder, newName){
-  if(pathToFolder === newName){
-    return;
-  }
-  //get all custom block names in the current sprite
-  let mutations = Blockly.Procedures.allProcedureMutations(workspace.targetWorkspace);
-  let procedures = mutations.map((m) => m.getAttribute('proccode'));
-
-
-  if(procedures.some((p) => isBlockInFolder(p, newName))){
-    //Folder already exists
-    alert(`A folder named "${newName}" already exists`);
-    return;
-  }
-  let blocksToRename = procedures.filter((p) =>isBlockInFolder(p, pathToFolder));
-  console.log(blocksToRename);
-
-  let newNames = blocksToRename.map((p) => newName + p.substring(pathToFolder.length));
-  console.log(newNames);
-
-
-  let blocks = workspace.targetWorkspace.getAllBlocks().filter((b) => b.type == 'procedures_prototype' || b.type == 'procedures_call');
-  let flyoutBlocks = workspace.getAllBlocks().filter((b) => b.type == 'procedures_call');
-  blocks.push(...flyoutBlocks);
-
-
-  for(let i = 0; i < blocks.length; i++){
-    let indexToReplace = blocksToRename.indexOf(blocks[i].procCode_);
-    if(indexToReplace >= 0){
-
-      blocks[i].procCode_ = newNames[indexToReplace];
-      blocks[i].updateDisplay_();
-      let vm_block = vm.runtime.flyoutBlocks.getBlock(blocks[i].id) || vm.editingTarget.blocks.getBlock(blocks[i].id);
-      if(vm_block){
-        vm_block.mutation.proccode = blocks[i].procCode_;
-      }
-    }
-  }
-
-}
-
-function setScriptMovability(parentBlock, isMovable){
-  parentBlock.movable_ = isMovable;
-  parentBlock["sa-frozen"] = !isMovable;
-  for(let i = 0; i < parentBlock.childBlocks_.length; i++){
-    setScriptMovability(parentBlock.childBlocks_[i], isMovable);
-  }
-}

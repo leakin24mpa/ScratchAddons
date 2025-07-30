@@ -1,4 +1,4 @@
-import { getFolderName, isModified } from "./folder-path-util.js";
+import { getFolderName, isModified, setCollapsed, setHidden, isHidden, isBlockHidden, isBlockInFolder } from "./folder-path-util.js";
 
 const ns = "http://www.w3.org/2000/svg";
 const FOLDER_IMAGE_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj4KPHBhdGggc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9IiNmZmZmZmYiIGQ9Ik0gNTUgNDAgTCA2MCAzMCBMIDkwIDMwIEwgOTUgNDAgTCA5NSA5NSBMIDUgOTUgTCA1IDQwIFoiPjwvcGF0aD4KPC9zdmc+';
@@ -23,6 +23,16 @@ function createSVGImage(x,y,width,height, src){
   img.setAttribute("y", y);
   img.setAttribute("href", src);
   return img;
+}
+function createSVGLine(x1, y1, x2, y2, strokeWidth, color){
+  const line = document.createElementNS(ns, "line");
+  line.setAttribute("x1", x1);
+  line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2);
+  line.setAttribute("y2", y2);
+  line.setAttribute("stroke-width", strokeWidth);
+  line.setAttribute("stroke", color);
+  return line;
 }
 function createSVGGroup(...children){
   const group = document.createElementNS(ns, "g");
@@ -49,20 +59,20 @@ function setTransform(element, x,y){
   element.setAttribute("transform", `translate(${x},${y})`);
 }
 
-//hacky way to measure the size of an svg element
+//hacky way to measure the size of an svg element (you can't measure svg elements that have not been rendered yet)
 function getElementDimensions(element){
-  //add the element to a new <svg> element and append that svg to the DOM
+  //1. add the element to a new <svg> element and append that svg to the DOM
   let svg = document.createElementNS(ns, "svg");
   svg.appendChild(element);
   document.body.appendChild(svg);
 
-  //get the dimensions
+  //2. get the dimensions of the added element
   let bbox = element.getBBox();
 
-  //remove the svg from the DOM
+  //3. remove the svg from the DOM
   document.body.removeChild(svg);
 
-  //Profit.
+  //4. Profit.
   return bbox;
 }
 
@@ -119,39 +129,176 @@ function createScratchBlockInput(Blockly, workspace, text, renderCallback, renam
   field.onFinishEditing_ = renameCallback;
   return textElement;
 }
-export function createTreeViewSVG(Blockly, workspace, text, isCollapsed, isHidden, collapseButtonCallback, hideButtonCallback, renameCallback){
 
+export function createMyBlocksSVG(Blockly, XMLitem, workspace, vm){
+  function createFolderHeaderSVG(text, isCollapsed, isHidden, collapseButtonCallback, hideButtonCallback, renameCallback){
+    let dropdownArrow = createDropdownArrow();
+    dropdownArrow.classList.add("sa-folder-dropdown");
+    if(isCollapsed){
+      dropdownArrow.classList.add("sa-folder-closed");
+    }
+    let eyeIcon = createSVGImage(0,0,20,20, isHidden? HIDDEN_ICON_IMAGE_DATA : SHOWN_ICON_IMAGE_DATA);
+    let collapseButton = createSVGGroup(createSVGRect(-10, -10, 40, 40, "transparent"), dropdownArrow);
+    let hideButton = createSVGGroup(createSVGRect(-10, -10, 40, 40, "transparent"), eyeIcon);
 
-  //createSVGText(text, "bold");
-  let dropdownArrow = createDropdownArrow();
-  dropdownArrow.classList.add("sa-folder-dropdown");
-  if(isCollapsed){
-    dropdownArrow.classList.add("sa-folder-closed");
+    hideButtonCallback(isHidden, true);
+    collapseButton.addEventListener("click", (e) => {
+      isCollapsed = !isCollapsed;
+      dropdownArrow.classList.toggle("sa-folder-closed");
+      collapseButtonCallback(isCollapsed);
+    });
+    hideButton.addEventListener("click", (e) => {
+      isHidden = !isHidden;
+      eyeIcon.setAttribute("href", isHidden? HIDDEN_ICON_IMAGE_DATA : SHOWN_ICON_IMAGE_DATA);
+      hideButtonCallback(isHidden, false);
+    });
+    let textElement = createScratchBlockInput(Blockly, workspace, text, (width) => {
+      setTransform(hideButton, width + 45, 5);
+    }, renameCallback);
+
+    let bgrect = createSVGRect(-5, -5, 400, 40, "#00000020");
+    bgrect.setAttribute("rx", 4);
+    setTransform(textElement, 30, -1);
+    setTransform(collapseButton, -5, 5);
+    setTransform(hideButton, textElement.getWidth() + 45, 5);
+    return {element: createSVGGroup(bgrect, textElement, collapseButton, hideButton), height: 40};
+
   }
-  let eyeIcon = createSVGImage(0,0,20,20, isHidden? HIDDEN_ICON_IMAGE_DATA : SHOWN_ICON_IMAGE_DATA);
-  let collapseButton = createSVGGroup(createSVGRect(-10, -10, 40, 40, "transparent"), dropdownArrow);
-  let hideButton = createSVGGroup(createSVGRect(-10, -10, 40, 40, "transparent"), eyeIcon);
+  function createFolderContentSVG(parentXML, getPath){
+    let elt = createSVGGroup();
+    let cursorY = 10;
+    for(let i = 0; i < parentXML.childNodes.length; i++){
+      let xml = parentXML.childNodes[i];
+      let createdSVG;
+      let height;
+      if(xml.tagName == 'BLOCK'){
+        let blockSVG = Blockly.Xml.domToBlock(xml, workspace);
+        createdSVG = blockSVG.svgGroup_;
+        height = 65;
+      }
+      else if(xml.tagName == 'FOLDER'){
+        let subFolder = createFolderSVG(xml, getPath);
+        createdSVG = subFolder.element;
+        height = subFolder.height;
+        cursorY += 10;
+      }
+      else{
+        console.error(`expected xml tags "folder" or "block", but found ${xml.tagName}`);
+      }
 
-  hideButtonCallback(isHidden, true);
-  collapseButton.addEventListener("click", (e) => {
-    isCollapsed = !isCollapsed;
-    dropdownArrow.classList.toggle("sa-folder-closed");
-    collapseButtonCallback(isCollapsed);
-  });
-  hideButton.addEventListener("click", (e) => {
-    isHidden = !isHidden;
-    eyeIcon.setAttribute("href", isHidden? HIDDEN_ICON_IMAGE_DATA : SHOWN_ICON_IMAGE_DATA);
-    hideButtonCallback(isHidden, false);
-  });
-  let textElement = createScratchBlockInput(Blockly, workspace, text, (width) => {
-    setTransform(hideButton, width + 45, 5);
-  }, renameCallback);
+      setTransform(createdSVG, 12, cursorY);
+      elt.appendChild(createdSVG);
+      cursorY += height;
+    }
+    return {element: elt, height: cursorY};
+  }
+  function createFolderSVG(parentXML, getParentPath){
+    let thisPath = parentXML.getAttribute("folder-path");
+    const folderName = parentXML.getAttribute("folder-name");
+    const hidden = parentXML.getAttribute("is-hidden") == "true";
+    const collapsed = parentXML.getAttribute("is-collapsed") == "true";
+    const getPath = () => getParentPath() + "/" + thisPath;
 
-  let bgrect = createSVGRect(-5, -5, 400, 40, "#00000020");
-  bgrect.setAttribute("rx", 4);
-  setTransform(textElement, 30, -1);
-  setTransform(collapseButton, -5, 5);
-  setTransform(hideButton, textElement.getWidth() + 45, 5);
-  return createSVGGroup(bgrect, textElement, collapseButton, hideButton);
 
+    const collapseCallback = (value) => {
+      const newName = setCollapsed(thisPath, value);
+
+      let ogPath = getPath();
+      let newPath = getParentPath() + "/" + newName;
+      renameFolder(Blockly, workspace, vm, ogPath, newPath);
+      thisPath = newName;
+      workspace.refreshToolboxSelection_();
+    }
+    const hideCallback = (value, forceUpdate) => {
+      if(!forceUpdate && value == isHidden(thisPath)){
+        return;
+      }
+      const newName = setHidden(thisPath, value);
+      let ogPath = getPath();
+      let newPath = getParentPath() + "/" + newName;
+      renameFolder(Blockly, workspace, vm, ogPath, newPath);
+      thisPath = newName;
+
+      //check if block was already hidden by a parent folder
+      if(isBlockHidden(newPath)){
+        return;
+      }
+
+      let blocks = workspace.targetWorkspace.getAllBlocks().filter((b) =>
+        b.type == 'procedures_definition' && isBlockInFolder(b.childBlocks_[0].procCode_,thisPath)
+      );
+      blocks.map((b) => {
+        const blockShouldHide = isBlockHidden(b.childBlocks_[0].procCode_);
+        b.svgGroup_.setAttribute("visibility", blockShouldHide? "hidden" : "visible");
+        setScriptMovability(b, !blockShouldHide);
+      });
+    }
+    const renameCallback = (text) => {
+      let ogPath = getPath();
+      let newPath = getParentPath() + "/" + text + (isModified(thisPath) ? thisPath.at(-1) : "");
+      renameFolder(Blockly, workspace, vm, ogPath, newPath);
+      thisPath = newPath;
+    }
+    const header = createFolderHeaderSVG(folderName, collapsed, hidden, collapseCallback, hideCallback, renameCallback);
+    if(collapsed){
+      return {element: createSVGGroup(header.element), height: header.height};
+    }
+    const content = createFolderContentSVG(parentXML, getPath);
+    const line = createSVGLine(0, 0, 0, content.height, 1, "#adadadff");
+    setTransform(content.element, 0, header.height);
+    setTransform(line, 0, header.height)
+    return { element: createSVGGroup(header.element, content.element, line), height: header.height + content.height};
+  }
+  let group = createFolderContentSVG(XMLitem, () => "");
+  return group;
+}
+//Since Scratch can't store the folder strucure in the sb3 file, we have to store all the folder information in the names of the custom blocks themselves
+//so renaming a folder just consists of renaming every custom block inside that folder
+function renameFolder(Blockly, workspace, vm, pathToFolder, newName){
+  if(pathToFolder === newName){
+    return;
+  }
+  //get all custom block names in the current sprite
+  let mutations = Blockly.Procedures.allProcedureMutations(workspace.targetWorkspace);
+  let procedures = mutations.map((m) => m.getAttribute('proccode'));
+
+
+  if(procedures.some((p) => isBlockInFolder(p, newName))){
+    //Folder already exists
+    alert(`A folder named "${newName}" already exists`);
+    return;
+  }
+  let blocksToRename = procedures.filter((p) =>isBlockInFolder(p, pathToFolder));
+  console.log(blocksToRename);
+
+  let newNames = blocksToRename.map((p) => newName + p.substring(pathToFolder.length));
+  console.log(newNames);
+
+
+  let blocks = workspace.targetWorkspace.getAllBlocks().filter((b) => b.type == 'procedures_prototype' || b.type == 'procedures_call');
+  let flyoutBlocks = workspace.getAllBlocks().filter((b) => b.type == 'procedures_call');
+  blocks.push(...flyoutBlocks);
+
+
+  for(let i = 0; i < blocks.length; i++){
+    let indexToReplace = blocksToRename.indexOf(blocks[i].procCode_);
+    if(indexToReplace >= 0){
+
+      blocks[i].procCode_ = newNames[indexToReplace];
+      blocks[i].updateDisplay_();
+      let vm_block = vm.runtime.flyoutBlocks.getBlock(blocks[i].id) || vm.editingTarget.blocks.getBlock(blocks[i].id);
+      if(vm_block){
+        vm_block.mutation.proccode = blocks[i].procCode_;
+      }
+    }
+  }
+
+}
+
+function setScriptMovability(parentBlock, isMovable){
+  parentBlock.movable_ = isMovable;
+  parentBlock["sa-frozen"] = !isMovable;
+  for(let i = 0; i < parentBlock.childBlocks_.length; i++){
+    setScriptMovability(parentBlock.childBlocks_[i], isMovable);
+  }
 }

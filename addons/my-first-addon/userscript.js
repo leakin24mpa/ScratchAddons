@@ -1,7 +1,5 @@
-import { getFolderName, setCollapsed, setHidden} from './folder-path-util.js';
 import { createFolderXML, getCreateAllInputs } from './folders.js';
 import { moddedLayout, moddedShow} from './modded-layout.js';
-import { createTreeViewSVG } from './tree-view-svg.js';
 
 export default async function ({ addon, console, msg, safeMsg }){
   const ScratchBlocks = await addon.tab.traps.getBlockly();

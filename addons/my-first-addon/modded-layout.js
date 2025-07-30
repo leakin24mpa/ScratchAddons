@@ -1,4 +1,4 @@
-import { createFolderSVG } from "./folders.js";
+import { createMyBlocksSVG } from "./tree-view-svg.js";
 
 
 //this is a copy of the function that ScratchBlocks uses to generate the SVG images for the
@@ -96,8 +96,8 @@ export function moddedShow(xmlList, Blockly, vm){
         gaps.push(default_gap);
       }
       //[ Addon ] we can use any XML tags that are not already in use to represent different types of SVG data
-      else if (tagName == 'FOLDER'){
-        let svg = createFolderSVG(Blockly, xml, this.workspace_, vm, () => "");
+      else if (tagName == 'SA-MY-BLOCKS'){
+        let svg = createMyBlocksSVG(Blockly, xml, this.workspace_, vm);
         let elt = svg.element;
         //make sure to mark which elements are SVGs created by the addon
         elt.classList.add("sa-custom-folder-svg");
@@ -198,7 +198,7 @@ export function moddedLayout(contents, gaps, Blockly) {
       cursorY += button.height + gaps[i];
     }
     else if (item.type == 'folder'){
-      item.element.setAttribute("transform", `translate(${12}, ${cursorY})`);
+      item.element.setAttribute("transform", `translate(0, ${cursorY})`);
       cursorY += item.height + gaps[i];
 
 
