@@ -3,6 +3,22 @@ import { getFirstTextContent, getFolderName, getFolderPath, isCollapsed, isHidde
 
 const FOLDER_IMAGE_DATA = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj4KPHBhdGggc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEwIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGZpbGw9IiNmZmZmZmYiIGQ9Ik0gNTUgNDAgTCA2MCAzMCBMIDkwIDMwIEwgOTUgNDAgTCA5NSA5NSBMIDUgOTUgTCA1IDQwIFoiPjwvcGF0aD4KPC9zdmc+';
 
+//Empty folders cannot be saved in the custom block names, so we need to keep track of them seperately
+let emptyFolders = new Set();
+
+export function renameEmpty(oldname, newname){
+  emptyFolders.delete(oldname);
+  emptyFolders.add(newname);
+}
+export function isEmpty(path){
+  return emptyFolders.has(path);
+}
+export function addEmpty(name){
+  emptyFolders.add(name);
+}
+export function removeEmpty(name){
+  emptyFolders.delete(name);
+}
 
 export function createFolderXML(Blockly, workspace){
   let xmlList = [];
@@ -30,23 +46,32 @@ export function createFolderXML(Blockly, workspace){
     folders: {}
   };
   function addBlockToFolderTree(tree, block){
-    if(block.path && block.path.length > 0){
+    if((block.path || block.isFolder) && block.path.length > 0){
       let subFolder = block.path[0];
-      if(!tree.folders[subFolder]){
-        tree.folders[subFolder] = {
+      let folderName = getFolderName(subFolder);
+      if(!tree.folders[folderName]){
+        tree.folders[folderName] = {
           blocks: [],
-          folders: {}
+          folders: {},
+          path: subFolder,
+          isCollapsed: isCollapsed(subFolder),
+          isHidden: isHidden(subFolder)
         }
       }
       block.path.splice(0, 1);
-      addBlockToFolderTree(tree.folders[subFolder], block);
+      addBlockToFolderTree(tree.folders[folderName], block);
     }
     else{
-      tree.blocks.push(block.mutation);
+      if(!block.isFolder){
+        tree.blocks.push(block.mutation);
+      }
     }
   }
   names.map((block) => {
     addBlockToFolderTree(folderTree, block);
+  });
+  emptyFolders.forEach((f) => {
+    addBlockToFolderTree(folderTree, {path: getFolderPath(f, false), isFolder: true});
   });
 
   function folderTreeToXML(tree, pathName){
@@ -61,10 +86,10 @@ export function createFolderXML(Blockly, workspace){
     }
     for(var f in tree.folders){
       let subFolder = document.createElement('folder');
-      subFolder.setAttribute("folder-name", getFolderName(f));
-      subFolder.setAttribute("folder-path", f);
-      subFolder.setAttribute("is-collapsed", isCollapsed(f));
-      subFolder.setAttribute("is-hidden", isHidden(f));
+      subFolder.setAttribute("folder-name", f);
+      subFolder.setAttribute("folder-path", tree.folders[f].path);
+      subFolder.setAttribute("is-collapsed", tree.folders[f].isCollapsed);
+      subFolder.setAttribute("is-hidden", tree.folders[f].isHidden);
       subFolder.append(...folderTreeToXML(tree.folders[f], pathName + "/" + f));
       xmlList.push(subFolder);
     }
@@ -112,15 +137,19 @@ return function(connectionMap) {
 
     //append the folder icon to the beginning of the block's SVG representation
     this.appendDummyInput("non-empty-name").appendField(field);
-    field.init();
-    let div;
-    field.fieldGroup_.addEventListener("mouseenter", (e) => {
-      div = createPopupDiv(getFolderPath(this.procCode_, true), e.clientX, e.clientY);
-      document.body.appendChild(div);
-    });
-    field.fieldGroup_.addEventListener("mouseleave", (e) => {
-      div.remove();
-    })
+    let oldInit = field.init;
+    field.init = () => {
+      oldInit.call(field);
+      let div;
+      field.fieldGroup_.addEventListener("mouseenter", (e) => {
+        div = createPopupDiv(getFolderPath(this.procCode_, true), e.clientX, e.clientY);
+        document.body.appendChild(div);
+      });
+      field.fieldGroup_.addEventListener("mouseleave", (e) => {
+        div.remove();
+      })
+    }
+
     //remove the filepath section of the block's name (ex. "/my folder/other folder/block" => "block")
     let shortenedText = getFirstTextContent(this.procCode_);
     if(shortenedText[0] == '%'){

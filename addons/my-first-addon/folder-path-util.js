@@ -48,8 +48,15 @@ export function isModified(folderText){
 export function getFolderName(folderText){
   return isModified(folderText)? folderText.substring(0, folderText.length - 1) : folderText;
 }
-
-export function isBlockInFolder(proccode, folderPathString){
+export function getParentPath(path, isBlock){
+  let parentFolder = getFolderPath(path, isBlock);
+  parentFolder.pop();
+  return createPathString(parentFolder);
+}
+export function isBlockInFolder(proccode, folderPathString, isBlock){
+  if(isBlock){
+    return proccode === folderPathString;
+  }
   if(!isInAnyFolder(proccode)){
     return false;
   }
@@ -77,4 +84,20 @@ export function setCollapsed(proccode, value){
 
 export function setHidden(proccode, value){
   return setFolderState(proccode, isCollapsed(proccode), value);
+}
+
+export function validateFolderName(text){
+  if(text.length < 1 ){
+      return null;
+    }
+    if(isModified(text)){
+      if(text.length < 2){
+        return null;
+      }
+      return getFolderName(text);
+    }
+    if(/[\/%]/.test(text)){
+      return null;
+    }
+    return text;
 }
